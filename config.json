@@ -1,0 +1,35 @@
+{
+  "upstream": {
+    "repo": "https://github.com/cursor/plugins.git",
+    "branch": "main",
+    "subpath": "pstack"
+  },
+  "topLevelSkills": [
+    "poteto-mode",
+    "poteto-help",
+    "architect",
+    "arena",
+    "benchmark-checklist",
+    "blast-radius",
+    "correct",
+    "figure-it-out",
+    "how",
+    "interrogate",
+    "no-comments",
+    "reflect",
+    "reframe",
+    "sharpen",
+    "show-me-your-work",
+    "tdd",
+    "teach",
+    "technical-writing",
+    "typescript-best-practices",
+    "unslop",
+    "why"
+  ],
+  "excludedSkills": [
+    "setup-pstack",
+    "make-bot-ui",
+    "swarm"
+  ]
+}
