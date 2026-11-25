@@ -17,6 +17,19 @@ This repository stays tiny and never vendors upstream files: `node sync.mjs` spa
 
 Prerequisites: **Git**, **Node.js >= 18**, and **Antigravity**.
 
+### 1-Paste Install in Antigravity
+
+Paste this prompt directly into Antigravity on any machine (Windows / macOS / Linux):
+
+```text
+Please install https://github.com/chihenho/pstack-antigravity into my Antigravity:
+Follow INSTALL_FOR_AGENTS.md in the repo — clone or pull into ~/.gemini/antigravity/scratch/pstack-antigravity, run `node sync.mjs`, verify via GetAllPlugins RPC (filtered) that all 21 skills and 2 subagents are loaded, report the synced upstream version/commit, and give me the [pstack](customization://pstack) link.
+```
+
+*(Want Chinese skill/plugin descriptions instead? Replace `node sync.mjs` with `node sync.mjs --lang zh`.)*
+
+### Manual CLI Install
+
 ```bash
 git clone https://github.com/chihenho/pstack-antigravity.git
 cd pstack-antigravity

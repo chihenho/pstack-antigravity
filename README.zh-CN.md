@@ -17,16 +17,23 @@
 
 环境要求：**Git**、**Node.js >= 18**、**Antigravity**。
 
+### 一键让 Antigravity 自动部署（复制即用）
+
+在任意设备（Windows / macOS / Linux）把下面这段话直接发给 Antigravity：
+
+```text
+请帮我安装并同步 https://github.com/chihenho/pstack-antigravity 到当前设备的 Antigravity：
+按仓库里的 INSTALL_FOR_AGENTS.md 执行——克隆或更新到 ~/.gemini/antigravity/scratch/pstack-antigravity，运行 `node sync.mjs --lang zh` 拉取上游并安装到 ~/.gemini/config/plugins/pstack/，通过 GetAllPlugins RPC（过滤输出）确认 21 个顶层 skill 和 2 个子代理已加载，最后告诉我同步到的上游版本号/commit，并给出 `[pstack](customization://pstack)` 链接。
+```
+
+*(如果想使用默认的英文技能描述，把 `--lang zh` 去掉直接运行 `node sync.mjs` 即可。)*
+
+### 手动安装
+
 ```bash
 git clone https://github.com/chihenho/pstack-antigravity.git
 cd pstack-antigravity
-node sync.mjs
-```
-
-仓库默认使用英文描述（`--lang en`）；如果你想在 Antigravity 中显示**中文**插件、技能与子代理描述，加上 `--lang zh` 即可：
-
-```bash
-node sync.mjs --lang zh
+node sync.mjs --lang zh   # 中文描述（不加参数默认为英文 en）
 ```
 
 安装完成后，Antigravity 会自动发现 `~/.gemini/config/plugins/pstack/`，下一轮对话即可直接使用 `/poteto-mode`、`architect`、`interrogate` 等技能，无需手动修改 `config.json` 或重启。
