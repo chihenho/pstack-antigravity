@@ -1,0 +1,48 @@
+{
+  "plugin": {
+    "description": "源自 cursor/plugins pstack 的 Antigravity 严谨工程工作流插件：内置 22 套研发剧本与 24 条工程原则，减少 AI 垃圾代码并强化实证验证。",
+    "suggestedPrompts": [
+      "使用 poteto-mode 排查并根因修复一个 Bug（先复现，再验证）",
+      "用 architect 技能先设计好数据结构、类型与模块边界再动手写代码",
+      "用 interrogate 对当前改动做一次严格的对抗性 Code Review"
+    ]
+  },
+  "agents": {
+    "poteto-agent": "poteto-mode 执行期间派生的写代码与辅助任务子代理，动手前会完整读取 poteto-mode 技能与 Antigravity 适配表。",
+    "comment-sicko": "由 /no-comments 调用的只读注释审查子代理，专门清理多余注释与不合理的规则屏蔽标记。"
+  },
+  "skills": {
+    "architect": "在写代码前先梳理类型、函数签名与模块结构，并在实现过程中持续把关。适用于 /architect、“architect this”、“design this”或直接写代码容易锁定错误形态的非平凡任务。",
+    "arena": "针对同一任务并行发起 N 个候选方案，选出基底并将其他方案的优点嫁接进来。适用于 /arena、“arena this”、“throw it in the arena”或单次尝试容易锁定错误方案的场景。",
+    "benchmark-checklist": "在汇报或采信性能测试结果前核查指标可信度（瓶颈限制、调优偏差、异常、可重复性、相关性及工作是否真实发生）。适用于跑完基准测试或汇报加速/回退数据时。",
+    "blast-radius": "在改动合并前排查 diff 之外可能受影响的范围，并通过实际运行代码（而非口头断言）证明其安全的唯一核心事实。适用于“blast radius of X”、“这会破坏什么”或审查令人不放心的小改动。",
+    "correct": "挖掘 Agent 在本仓库反复犯的错并逐一从机制上杜绝。按架构、类型、带修复提示的 Lint、测试、文档的优先级加固，并用真实历史错误验证每项检查会失败。适用于 /correct。",
+    "figure-it-out": "当没有现成窄剧本适用时，设计可审计的执行方案：大型迁移、多部分复杂改动或人离开后需要验收的任务。按任务规模调整严谨度，跑假设循环并记录决策。适用于 /figure-it-out 或“figure it out”。",
+    "how": "用于“how does X work”、改动前的代码走读，以及代码归属/分层/放置位置问题（“该放哪”“归哪个包”“这是不是正确分层”）。讲解子系统架构、运行时流程与心智模型；问设计动机请用 why。",
+    "interrogate": "用于 /interrogate、“adversarial review”、“multi-model review”、“challenge this”、“stress test this code”、“find blind spots”或“tear this apart”。让对抗评审尝试攻破改动或设计，只保留跑出实证的问题。",
+    "no-comments": "启动 Comment Sicko 清理不必要注释、修复被采纳的问题，并为声明的外部约束提供结构化编码方案。适用于 /no-comments。",
+    "poteto-help": "引导用户了解 pstack、/poteto-mode 的用法，以及如何为当前任务挑选合适的技能、剧本或原则。携带问题输入 /poteto-help 时使用。",
+    "poteto-mode": "poteto 的工程代理风格：简洁详实、审慎使用子代理、无 AI 腔表达、代码极简且经实证验证。适用于 poteto、/poteto-mode 或要求按此风格工作时。",
+    "reflect": "从当前会话记录中提炼可复用的长期经验，并落实为对现有技能的具体修改。当用户要求 reflect 时使用。",
+    "reframe": "把用户模糊的想法提炼成专业领域术语，借鉴解决过同类问题的相邻领域概念，再用新术语重写需求描述。适用于 /reframe。",
+    "sharpen": "把提示词打磨得更深入而非更冗长，补充专家做法、关键起点与外部验证方式后重写 prompt。适用于 /sharpen。",
+    "show-me-your-work": "为长时或无人值守任务保留可审查的决策轨迹：记录包含决策内容、原因、证据和结果的 TSV 日志。适用于 /show-me-your-work、长时自主运行或需要事后审查的任务。",
+    "tdd": "测试驱动开发：先写失败测试再写修复。当用户明确要求 TDD、失败测试或回归测试，或 Bug 存在明确且低成本的本地测试路径时使用。",
+    "teach": "用通俗易懂的方式讲透一项改动或子系统，让人真正理解而非只看摘要。会结合 how 与 why 技能，通过层层递进的解释展开。适用于“teach me this”或“帮我彻底理解 X”。",
+    "technical-writing": "分层技术写作规范：融合 Diátaxis 结构、Google 开发者文档句式、STE 指令规则与全球英语语法。适用于 /technical-writing 或编写/审查文档、RFC、README、PR 描述和提交信息。",
+    "typescript-best-practices": "TypeScript 最佳实践，将类型系统纪律落地到具体语法。在阅读或编辑 .ts / .tsx 文件时使用。",
+    "unslop": "清理任何文本或回复中的 AI 腔与空洞套话。适用于 /unslop 或润色表达。",
+    "why": "用于“why does X work this way”、设计动机、回归原因、复盘或数据阈值依据。基于 commit 与 PR 讨论记录给出带引用的权衡分析（问运行时行为请用 how）。",
+    "automate-me": "用于 /automate-me 或提炼个人工作习惯生成专属 `-mode` 技能：从近期会话记录中提取偏好，结合 unslop 起草或更新个人工作流技能。",
+    "bro": "把上一条消息用完全没有术语的大白话重新解释一遍。适用于 /bro。",
+    "create-formal-verification-skill": "为高风险且普通测试难以覆盖的并发、重试、状态机、解析器或不安全代码生成项目级形式化验证技能（不限语言，匹配合适验证工具）。适用于 /create-formal-verification-skill。",
+    "create-verification-skill": "为当前项目生成可像真实用户一样驱动应用并验证行为的本地验证技能（不限语言、框架或平台）。适用于 /create-verification-skill。",
+    "in-your-own-words": "在动手前用自己的话复述对用户目标与待解决问题的理解。适用于 /in-your-own-words。",
+    "ketchup": "用平实语言与小图表汇总自上次消息以来的对话进展，并列出所有等待用户拍板的事项及决策依据。适用于 /ketchup。",
+    "ketchup-video": "类似 /ketchup，但生成一段带字幕的简短幻灯片视频回顾进展，并在下方列出待决策事项。适用于 /ketchup-video。",
+    "maintain-formal-verification-skill": "当被形式化验证覆盖的代码发生变化后，定位相关 commit，更新模型、验证框架或属性并重跑，区分失败究竟是验证漂移还是代码 Bug。适用于 /maintain-formal-verification-skill。",
+    "maintain-verification-skill": "定期巡检并校准项目的本地验证技能与功能映射表，通过并行源码阅读与实机回放提出最多一个经过实证的修正 PR。适用于 /maintain-verification-skill。",
+    "recall": "从聊天记录、实时状态与共享记录中重建你在某主题上的近期工作上下文，并整理成紧凑的当前状态简报。适用于“recall my work on X”或恢复中断任务前。",
+    "statechart": "检查在状态间流转的系统（产品流程、协议、服务）的 TLA+ 模型并绘制 Mermaid 状态图，标出违反规则的状态及最短触发路径。适用于 /statechart。"
+  }
+}

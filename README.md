@@ -1,19 +1,21 @@
+English | [简体中文](./README.zh-CN.md)
+
 # pstack-antigravity
 
-将 Cursor 官方开源插件 [`cursor/plugins/pstack`](https://github.com/cursor/plugins/tree/main/pstack) 自动同步并适配为 **Antigravity 原生插件** 的跨平台工具（支持 Windows / macOS / Linux）。
+A cross-platform sync & adapter tool (Windows / macOS / Linux) that turns Cursor's open-source [`cursor/plugins/pstack`](https://github.com/cursor/plugins/tree/main/pstack) into a clean, native **Antigravity plugin**.
 
-## 为什么需要这个仓库？
+## Why not just copy `pstack` directly?
 
-直接把 Cursor 版 `pstack` 原封不动放进 Antigravity 会遇到几个实际问题：
-1. **上下文膨胀**：原版有约 60 个 skill（其中 24 条是 `principle-*` 原则叶子文档），全放顶层会在每轮对话注入大量技能描述。
-2. **工具与路径不匹配**：原版技能正文使用 Cursor 术语（`Task`、`AskQuestion`、`todolist`、`~/.cursor/plugins/`、`environment: "cloud"`、`control-ui` 等）以及仅限 Cursor 的模型 slug。
-3. **子代理格式与冲突**：`poteto-agent` / `comment-sicko` 需适配为 Antigravity 的 `agents/*.md` 格式（显式声明 `tools`、`subagent: true`）；原版 `swarm` 技能也会与 Antigravity 内置 `swarm` 插件冲突。
+Dropping the raw Cursor plugin folder into Antigravity hits a few practical issues:
+1. **Context bloat**: Upstream ships ~60 skills (24 of which are `principle-*` leaf docs). Exposing all of them at the top level injects dozens of skill descriptions into every turn.
+2. **Cursor-specific tools & paths**: Upstream skills reference `Task`, `AskQuestion`, `todolist`, `~/.cursor/plugins/`, `environment: "cloud"`, `control-ui`, and Cursor model slugs.
+3. **Subagent schema & name collision**: `poteto-agent` and `comment-sicko` need Antigravity's `agents/*.md` frontmatter (`subagent: true`, `mainAgent: false`, explicit `tools`), and upstream `swarm` collides with Antigravity's built-in `swarm` plugin.
 
-本仓库只保存轻量配置与构建脚本，不内置上游源码副本：运行 `node sync.mjs` 时通过 Git sparse-checkout 只拉取上游 `pstack/` 目录到 `.upstream/`（已 gitignore），清洗并转换后输出到 `~/.gemini/config/plugins/pstack/`。
+This repository stays tiny and never vendors upstream files: `node sync.mjs` sparse-clones `pstack/` from `cursor/plugins` into `.upstream/` (gitignored), transforms skills/agents for Antigravity, and installs the result to `~/.gemini/config/plugins/pstack/`.
 
-## 快速安装
+## Quick Start
 
-环境要求：**Git**、**Node.js >= 18**、**Antigravity**。
+Prerequisites: **Git**, **Node.js >= 18**, and **Antigravity**.
 
 ```bash
 git clone https://github.com/chihenho/pstack-antigravity.git
@@ -21,50 +23,61 @@ cd pstack-antigravity
 node sync.mjs
 ```
 
-安装完成后，Antigravity 会自动发现 `~/.gemini/config/plugins/pstack/`，下一轮对话即可直接使用 `/poteto-mode`、`architect`、`interrogate` 等技能，无需手动修改 `config.json` 或重启。
+Want Chinese (`zh`) descriptions for the plugin, skills, and subagents instead of English?
 
-## 默认安装内容（Curated 模式）
+```bash
+node sync.mjs --lang zh
+```
 
-- **21 个顶层技能（`skills/`）**：`poteto-mode`（含 22 套 playbooks）、`poteto-help`、`architect`、`arena`、`benchmark-checklist`、`blast-radius`、`correct`、`figure-it-out`、`how`、`interrogate`、`no-comments`、`reflect`、`reframe`、`sharpen`、`show-me-your-work`、`tdd`、`teach`、`technical-writing`、`typescript-best-practices`、`unslop`、`why`
-- **24 条工程原则（`references/principles/`）**：折叠存放，不占用常驻 skill 列表，由 `poteto-mode` 按需读取
-- **11 个低频/专项技能（`references/extra-skills/`）**：折叠存放，避免污染 `/` 菜单（如需全部放开可加 `--all`）
-- **2 个适配后的子代理（`agents/`）**：`poteto-agent`、`comment-sicko`
-- **Antigravity 适配表（`docs/harness/antigravity.md`）**：自动注入每个技能正文开头，映射 Cursor 工具、子代理参数、模型与路径
-- **默认排除**：`setup-pstack`、`make-bot-ui`、`swarm`（避免与内置插件或平台特性冲突）
+Antigravity automatically discovers `~/.gemini/config/plugins/pstack/` — no `config.json` edits or restart required. Skills like `/poteto-mode`, `/architect`, and `/interrogate` are ready from the next turn.
 
-## 日常更新与多设备同步
+## What Gets Installed (Curated Mode)
 
-- **同步上游最新 `pstack`**：
-  ```bash
-  git pull && node sync.mjs
-  ```
-- **常用参数**：
-  - `node sync.mjs --no-pull`：跳过 `git pull`，基于本地 `.upstream/` 离线重建（适合修改 `config.json` 或适配表后快速重装）
-  - `node sync.mjs --all`：将除排除列表与 `principle-*` 外的所有技能全部暴露到顶层 `skills/`
-  - `node sync.mjs --target <dir>`：指定输出目录（默认为 `~/.gemini/config/plugins/pstack`）
+- **21 top-level skills (`skills/`)**: `poteto-mode` (with 22 playbooks), `poteto-help`, `architect`, `arena`, `benchmark-checklist`, `blast-radius`, `correct`, `figure-it-out`, `how`, `interrogate`, `no-comments`, `reflect`, `reframe`, `sharpen`, `show-me-your-work`, `tdd`, `teach`, `technical-writing`, `typescript-best-practices`, `unslop`, `why`
+- **24 engineering principles (`references/principles/`)**: Folded out of the top-level skill list so `poteto-mode` reads them on demand
+- **11 situational skills (`references/extra-skills/`)**: Folded by default to keep the `/` menu focused (pass `--all` to expose all of them at top level)
+- **2 adapted subagents (`agents/`)**: `poteto-agent`, `comment-sicko`
+- **Antigravity adapter (`docs/harness/antigravity.md`)**: Linked at the top of each skill to map Cursor tools, subagents, models, and paths to Antigravity
+- **Excluded by default**: `setup-pstack`, `make-bot-ui`, `swarm`
 
-## 自定义技能列表
+## Updating & CLI Options
 
-编辑 [`config.json`](./config.json) 中的 `topLevelSkills` 与 `excludedSkills`，然后运行：
+Pull upstream updates and rebuild:
+
+```bash
+git pull && node sync.mjs
+```
+
+Options:
+- `--lang <en|zh>`: Choose description language for `plugin.json`, skills, and agents (defaults to `en`, or `defaultLang` in `config.json`)
+- `--no-pull`: Skip `git pull` and rebuild from local `.upstream/` (useful after editing `config.json` or `i18n/zh.json`)
+- `--all`: Expose all non-excluded, non-principle skills under top-level `skills/`
+- `--target <path>`: Override output directory (default: `~/.gemini/config/plugins/pstack`)
+
+## Customizing Skills
+
+Edit [`config.json`](./config.json) (`topLevelSkills`, `excludedSkills`, `defaultLang`) or [`i18n/zh.json`](./i18n/zh.json), then rebuild offline:
 
 ```bash
 node sync.mjs --no-pull
 ```
 
-## 目录结构
+## Structure
 
 ```text
 pstack-antigravity/
 ├── .gitignore
 ├── LICENSE
 ├── README.md
-├── config.json                  # 顶层技能白名单 & 排除列表
-├── docs/harness/antigravity.md  # Cursor -> Antigravity 工具、模型与路径映射表
-├── templates/poteto-agent.md    # Antigravity 版 poteto-agent 子代理模板
-└── sync.mjs                     # 跨平台拉取与转换脚本（零第三方依赖）
+├── README.zh-CN.md
+├── config.json                  # Default language, curated skill allowlist & exclusions
+├── i18n/zh.json                 # Simplified Chinese descriptions for plugin, agents, and skills
+├── docs/harness/antigravity.md  # Cursor -> Antigravity tool, model, and path mapping
+├── templates/poteto-agent.md    # Antigravity-adapted poteto-agent subagent template
+└── sync.mjs                     # Zero-dependency cross-platform sync & build script
 ```
 
-## 致谢与协议
+## Credits & License
 
-- 上游 `pstack` 插件由 **Lauren Tan ([poteto](https://x.com/poteto))** 开发并开源于 [`cursor/plugins`](https://github.com/cursor/plugins/tree/main/pstack)（MIT License）。
-- 本适配与同步工具仓库同样采用 [MIT License](./LICENSE) 开源。
+- Upstream `pstack` was created by **Lauren Tan ([poteto](https://x.com/poteto))** in [`cursor/plugins`](https://github.com/cursor/plugins/tree/main/pstack) (MIT License).
+- This adapter & sync repository is also released under the [MIT License](./LICENSE).

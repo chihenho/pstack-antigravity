@@ -17,10 +17,18 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_TARGET = join(homedir(), ".gemini", "config", "plugins", "pstack");
 
-function parseArgs(argv) {
+function normalizeLang(value) {
+  const v = String(value || "").trim().toLowerCase();
+  if (v === "en") return "en";
+  if (v === "zh" || v === "zh-cn" || v === "zh_cn") return "zh";
+  throw new Error(`Unsupported --lang value: ${value}. Use "en" or "zh".`);
+}
+
+function parseArgs(argv, defaultLang) {
   const opts = {
     pull: true,
     all: false,
+    lang: normalizeLang(defaultLang || "en"),
     target: DEFAULT_TARGET,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -29,6 +37,15 @@ function parseArgs(argv) {
       opts.pull = false;
     } else if (arg === "--all") {
       opts.all = true;
+    } else if (arg === "--lang") {
+      const next = argv[i + 1];
+      if (!next) {
+        throw new Error("--lang requires a value (en | zh)");
+      }
+      opts.lang = normalizeLang(next);
+      i += 1;
+    } else if (arg.startsWith("--lang=")) {
+      opts.lang = normalizeLang(arg.slice("--lang=".length));
     } else if (arg === "--target") {
       const next = argv[i + 1];
       if (!next) {
@@ -38,7 +55,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === "-h" || arg === "--help") {
       console.log(
-        "Usage: node sync.mjs [--no-pull] [--all] [--target <path>]\n" +
+        "Usage: node sync.mjs [--lang <en|zh>] [--no-pull] [--all] [--target <path>]\n" +
+          "  --lang <en|zh>   Description language for plugin/skills/agents (default: en)\n" +
           "  --no-pull        Skip git pull; rebuild from .upstream/\n" +
           "  --all            Expose all non-excluded, non-principle skills at top-level skills/\n" +
           "  --target <path>  Override output directory (default: ~/.gemini/config/plugins/pstack)"
@@ -94,6 +112,20 @@ function syncUpstream(upstreamDir, { repo, branch, subpath }, shouldPull) {
   return { commit };
 }
 
+function unquoteYamlScalar(val) {
+  if (val.startsWith('"') && val.endsWith('"')) {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return val.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    }
+  }
+  if (val.startsWith("'") && val.endsWith("'")) {
+    return val.slice(1, -1).replace(/''/g, "'");
+  }
+  return val;
+}
+
 /**
  * Parse YAML frontmatter block cleanly, handling folded/literal multiline scalars (`>-`, `>`, `|`, `|-`)
  * and quoted values, while preserving the markdown body.
@@ -141,12 +173,7 @@ function splitFrontmatter(raw) {
       }
       val = contLines.join(" ");
     } else {
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1);
-      }
+      val = unquoteYamlScalar(val);
       i += 1;
     }
 
@@ -156,15 +183,24 @@ function splitFrontmatter(raw) {
   return { fields, body: match[2] };
 }
 
-function buildSkillMarkdown(rawContent, skillName, adapterRelPath, isPotetoMode = false) {
+function buildSkillMarkdown(rawContent, skillName, adapterRelPath, lang, zhDict, isPotetoMode = false) {
   const { fields, body } = splitFrontmatter(rawContent);
-  let description = (fields.description || `pstack ${skillName} skill`).replace(/\s+/g, " ").trim();
+  const explicitOnly = fields["disable-model-invocation"] === "true";
 
-  if (
-    fields["disable-model-invocation"] === "true" &&
-    !/only when explicitly requested|only activate when explicitly/i.test(description)
-  ) {
-    description = `${description} Only activate when explicitly requested by the user.`;
+  let description;
+  if (lang === "zh" && zhDict?.skills?.[skillName]) {
+    description = zhDict.skills[skillName].replace(/\s+/g, " ").trim();
+    if (explicitOnly && !/仅在用户明确|仅当用户明确/.test(description)) {
+      description = `${description} 仅在用户明确请求时启用。`;
+    }
+  } else {
+    description = (fields.description || `pstack ${skillName} skill`).replace(/\s+/g, " ").trim();
+    if (
+      explicitOnly &&
+      !/only when explicitly requested|only activate when explicitly/i.test(description)
+    ) {
+      description = `${description} Only activate when explicitly requested by the user.`;
+    }
   }
 
   const notice =
@@ -197,12 +233,35 @@ function buildSkillMarkdown(rawContent, skillName, adapterRelPath, isPotetoMode 
   return `${cleanFrontmatter}\n\n${updatedBody.replace(/^\n+/, "")}`;
 }
 
-function buildCommentSickoAgent(rawContent) {
+function buildPotetoAgent(rawContent, lang, zhDict) {
+  const { fields, body } = splitFrontmatter(rawContent);
+  const description =
+    lang === "zh" && zhDict?.agents?.["poteto-agent"]
+      ? zhDict.agents["poteto-agent"]
+      : fields.description ||
+        "Delegate subagent for code-writing and helper tasks spawned during a poteto-mode run. Reads poteto-mode SKILL.md and the Antigravity adapter before doing any work.";
+  const frontmatter = [
+    "---",
+    "name: poteto-agent",
+    `description: ${JSON.stringify(description)}`,
+    "subagent: true",
+    "mainAgent: false",
+    "tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]",
+    "---",
+  ].join("\n");
+  return `${frontmatter}\n\n${body.replace(/^\n+/, "")}`;
+}
+
+function buildCommentSickoAgent(rawContent, lang, zhDict) {
   const { body } = splitFrontmatter(rawContent);
+  const description =
+    lang === "zh" && zhDict?.agents?.["comment-sicko"]
+      ? zhDict.agents["comment-sicko"]
+      : "Read-only comment reviewer spawned by /no-comments to flag unnecessary comments and workaround suppressions.";
   const frontmatter = [
     "---",
     "name: comment-sicko",
-    'description: "Read-only comment reviewer spawned by /no-comments to flag unnecessary comments and workaround suppressions."',
+    `description: ${JSON.stringify(description)}`,
     "subagent: true",
     "mainAgent: false",
     "tools: [read_file, run_command]",
@@ -212,10 +271,14 @@ function buildCommentSickoAgent(rawContent) {
 }
 
 function main() {
-  const opts = parseArgs(process.argv.slice(2));
   const config = JSON.parse(readFileSync(join(REPO_ROOT, "config.json"), "utf8"));
-  const upstreamDir = join(REPO_ROOT, ".upstream");
+  const opts = parseArgs(process.argv.slice(2), config.defaultLang);
+  const zhDict =
+    opts.lang === "zh"
+      ? JSON.parse(readFileSync(join(REPO_ROOT, "i18n", "zh.json"), "utf8"))
+      : null;
 
+  const upstreamDir = join(REPO_ROOT, ".upstream");
   const { commit } = syncUpstream(upstreamDir, config.upstream, opts.pull);
   const pstackSrc = join(upstreamDir, config.upstream.subpath);
   const skillsSrc = join(pstackSrc, "skills");
@@ -277,7 +340,14 @@ function main() {
     cpSync(srcDir, destDir, { recursive: true });
     const skillMdPath = join(destDir, "SKILL.md");
     const rawSkill = readFileSync(skillMdPath, "utf8");
-    const transformed = buildSkillMarkdown(rawSkill, name, adapterRelPath, name === "poteto-mode");
+    const transformed = buildSkillMarkdown(
+      rawSkill,
+      name,
+      adapterRelPath,
+      opts.lang,
+      zhDict,
+      name === "poteto-mode"
+    );
     writeFileSync(skillMdPath, transformed, "utf8");
 
     if (isTopLevel) {
@@ -288,9 +358,11 @@ function main() {
   }
 
   // Agents
-  cpSync(
-    join(REPO_ROOT, "templates", "poteto-agent.md"),
-    join(stageDir, "agents", "poteto-agent.md")
+  const rawPotetoAgent = readFileSync(join(REPO_ROOT, "templates", "poteto-agent.md"), "utf8");
+  writeFileSync(
+    join(stageDir, "agents", "poteto-agent.md"),
+    buildPotetoAgent(rawPotetoAgent, opts.lang, zhDict),
+    "utf8"
   );
   counts.agents += 1;
 
@@ -299,7 +371,7 @@ function main() {
     const rawCommentSicko = readFileSync(commentSickoSrc, "utf8");
     writeFileSync(
       join(stageDir, "agents", "comment-sicko.md"),
-      buildCommentSickoAgent(rawCommentSicko),
+      buildCommentSickoAgent(rawCommentSicko, opts.lang, zhDict),
       "utf8"
     );
     counts.agents += 1;
@@ -322,22 +394,30 @@ function main() {
   }
 
   // Antigravity plugin.json (strictly supported top-level fields)
+  const pluginDescription =
+    opts.lang === "zh" && zhDict?.plugin?.description
+      ? zhDict.plugin.description
+      : "Rigorous software engineering workflows, 22 playbooks, and 24 engineering principles adapted from cursor/plugins pstack for Antigravity.";
+  const suggestedPrompts =
+    opts.lang === "zh" && Array.isArray(zhDict?.plugin?.suggestedPrompts)
+      ? zhDict.plugin.suggestedPrompts
+      : [
+          "Use poteto-mode to reproduce, root-cause, and fix a bug with runtime verification",
+          "Use architect to settle data shapes, types, and module boundaries before coding",
+          "Use interrogate to run a rigorous adversarial code review on my current diff",
+        ];
+
   const pluginManifest = {
     name: "pstack",
     displayName: "pstack (poteto-mode)",
     version: upstreamVersion,
-    description:
-      "Rigorous software engineering workflows, 22 playbooks, and 24 engineering principles adapted from cursor/plugins pstack for Antigravity.",
+    description: pluginDescription,
     author: {
       name: "Lauren Tan (adapted for Antigravity)",
     },
     homepage: "https://github.com/cursor/plugins/tree/main/pstack",
     repository: "https://github.com/cursor/plugins",
-    suggestedPrompts: [
-      "使用 poteto-mode 排查并根因修复一个 Bug（先复现，再验证）",
-      "用 architect 技能先设计好数据结构与模块边界再动手写代码",
-      "用 interrogate 对当前改动做一次严格的对抗性 Code Review",
-    ],
+    suggestedPrompts,
   };
   writeFileSync(
     join(stageDir, "plugin.json"),
@@ -352,6 +432,7 @@ function main() {
     upstreamCommit: commit,
     syncedAt: new Date().toISOString(),
     mode: opts.all ? "all" : "curated",
+    lang: opts.lang,
     counts,
   };
   writeFileSync(
@@ -369,6 +450,7 @@ function main() {
   console.log("\n=== pstack -> Antigravity sync complete ===");
   console.log(`Upstream : ${upstreamVersion} (${commit})`);
   console.log(`Mode     : ${syncMeta.mode}`);
+  console.log(`Lang     : ${syncMeta.lang}`);
   console.log(`Target   : ${target}`);
   console.log(
     `Counts   : topLevelSkills=${counts.topLevel}, principles=${counts.principles}, extraSkills=${counts.extra}, excluded=${counts.excluded}, agents=${counts.agents}`

@@ -1,4 +1,5 @@
 {
+  "defaultLang": "en",
   "upstream": {
     "repo": "https://github.com/cursor/plugins.git",
     "branch": "main",
